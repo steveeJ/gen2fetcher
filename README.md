@@ -13,6 +13,8 @@ pip install -r https://raw.githubusercontent.com/steveeJ/gen2fetcher/master/requ
 ```
 
 ## Usage
+
+### Overview
 ```
 $ gen2fetcher --help
 usage: gen2fetcher [-h] [--arch [ARCH]] [--stage3] [--portage]
@@ -33,11 +35,32 @@ optional arguments:
                         Directory for file downloads. Defaults to 'download/'
 ```
 
+### download command
+```
+$ gen2fetcher download --help
+usage: gen2fetcher download [-h] [--date DATE] [-o]
+
+optional arguments:
+  -h, --help       show this help message and exit
+  --date DATE      Request a specific archive date.
+  -o, --overwrite
+```
+
+### verify command
+```
+$ gen2fetcher verify --help
+usage: gen2fetcher verify [-h] --date DATE
+
+optional arguments:
+  -h, --help   show this help message and exit
+  --date DATE  Request a specific archive date.
+```
+
 ## Example
 This is an example of downloading the most recent stage3 and portage archive,
 where the stage3 archive was already in place.
 
-```bash
+```
 $ gen2fetcher --stage3 --portage download
 DEBUG: Assuming today for archive date
 INFO: Downloading stage3-amd64-20140926.tar.bz2
