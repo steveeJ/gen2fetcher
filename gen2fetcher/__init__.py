@@ -1,4 +1,4 @@
-#!/usr/bin/env python2
+#!/usr/bin/env python
 
 from __future__ import print_function
 import datetime, wget, os
@@ -83,7 +83,7 @@ class Downloader():
             else:
                 return None
         except Exception as e:
-            print("ERROR: Failed to download %s\n%s" % (filename, e.message))
+            print("ERROR: Failed to download %s\n%s" % (filename, e))
 
     def download(self):
         if self.date is None:
@@ -140,8 +140,8 @@ class Stage3Downloader(Downloader):
             lastchar = ""
             digestfile.readline()
             while (lastchar != " "):
-                expected += lastchar
-                lastchar = digestfile.read(1)
+                expected += str(lastchar)
+                lastchar = digestfile.read(1).decode()
             return expected == hasher.hexdigest()
 
 
@@ -169,7 +169,7 @@ class PortageDownloader(Downloader):
             lastchar = ""
             while (lastchar != " "):
                 expected += lastchar
-                lastchar = md5file.read(1)
+                lastchar = md5file.read(1).decode()
             return expected == hasher.hexdigest()
 
 def download(args):
