@@ -19,4 +19,7 @@ setup(
             'gen2fetcher=gen2fetcher:main',
         ],
     },
+    install_requires=[
+        'git+https://github.com/steveeJ/python-wget.git'
+    ],
 )
