@@ -92,9 +92,8 @@ class Downloader():
 
         day = datetime.datetime.strptime(self.date, "%Y%m%d")
         filename = None
-        for i in list(range(6)):
-            day -= datetime.timedelta(days=1)
-            self.date = day.strftime("%Y%m%d")
+        for i in list(range(7)):
+            self.date = (day-datetime.timedelta(days=i)).strftime("%Y%m%d")
             filename = self._download()
             if filename is not None:
                 break
