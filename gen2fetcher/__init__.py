@@ -193,10 +193,10 @@ def verify(args):
 
 def main():
     parser = argparse.ArgumentParser(description="Utility for retrieving Gentoo stage3+portage archives")
-    parser.add_argument("--arch", nargs="?", default="amd64", help="ARCH for stage3 archive")
+    parser.add_argument("--arch", nargs="?", default="amd64", help="ARCH for stage3 archive. Defaults to 'amd64'")
     parser.add_argument("--stage3", action="store_true", default=False, help="Process stage3 archive")
     parser.add_argument("--portage", action="store_true", default=False, help="Process portage snapshot")
-    parser.add_argument("--directory", nargs="?", default="download/")
+    parser.add_argument("--directory", nargs="?", default="download/", help="Directory for file downloads. Defaults to 'download/'")
 
     # Subparser action
     subparsers = parser.add_subparsers(dest='action')
