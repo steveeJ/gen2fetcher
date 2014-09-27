@@ -16,10 +16,17 @@ setup(
     keywords="gentoo downloader stage3 portage",
     entry_points={
         'console_scripts': [
-            'gen2fetcher=gen2fetcher:main',
-        ],
+            'gen2fetcher=gen2fetcher:main'
+        ]
     },
     install_requires=[
-        'git+https://github.com/steveeJ/python-wget.git#egg=wget'
+        'wget>2.2',
+    ],
+     classifiers=[
+        'Environment :: Console',
+        'Programming Language :: Python :: 2',
+        'Programming Language :: Python :: 3',
+        'Topic :: Software Development :: Libraries :: Python Modules',
+        'Topic :: Gentoo :: Download :: Utilities',
     ],
 )
