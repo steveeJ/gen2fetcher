@@ -5,6 +5,13 @@ A utility that allows downloading and verifying Gentoo stage3 and portage-snapsh
 ## Early Stage Warning
 The API and command line arguments will eventually break in upcoming versions!
 
+## Installation
+If you want to try gen2fetcher you can install it via *pip*. I suggest using pip inside [virtualenv](https://github.com/pypa/virtualenv).
+
+```
+pip install -r https://raw.githubusercontent.com/steveeJ/gen2fetcher/master/requirements.txt
+```
+
 ## Usage
 ```
 $ gen2fetcher --help

@@ -1,1 +1,2 @@
+-e git+https://github.com/steveeJ/gen2fetcher#egg=gen2fetcher
 -e git+https://github.com/steveeJ/python-wget.git#egg=wget
