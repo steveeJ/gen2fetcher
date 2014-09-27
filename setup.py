@@ -20,6 +20,6 @@ setup(
         ],
     },
     install_requires=[
-        'git+https://github.com/steveeJ/python-wget.git'
+        'git+https://github.com/steveeJ/python-wget.git#egg=wget'
     ],
 )
