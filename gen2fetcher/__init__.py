@@ -11,9 +11,19 @@ class Downloader():
     """
     Base Class which serves as a partial implementation to common methods.
     """
-    def __init__(self, date, arch, directory, overwrite=False):
+    def __init__(self, date, arch, directory, overwrite=False, subarch=None):
+        """
+
+        :param date: Date to be specified in YYYYMMDD format
+        :param arch: ARCH for the stage3 image
+        :param directory: Target directories for downloaded/verified files
+        :param overwrite: Specifies if a re-download should be forced even if files are in-place
+        """
         self.date = date
         self.arch = arch
+        if subarch is None:
+            subarch = arch
+        self.subarch = subarch
         self.directory = directory
         self.overwrite = overwrite
 
@@ -39,7 +49,7 @@ class Downloader():
 
     @property
     def filename(self):
-        return self.FILENAME.substitute(date=self.date, arch=self.arch)
+        return self.FILENAME.substitute(date=self.date, subarch=self.subarch)
 
     @property
     def _target_file(self):
@@ -49,8 +59,36 @@ class Downloader():
     def _checkum_file(self):
         return "%s/%s%s" % (self.directory, self.filename, self.CHECKSUM_SUFFIX)
 
-    def _verify(self):
+    @property
+    def CHECKSUM_KEYWORD(self):
         raise NotImplementedError("Class %s doesn't implement this method" % (self.__class__.__name__))
+
+    def _verify_hasher(self):
+        raise NotImplementedError("Class %s doesn't implement this method" % (self.__class__.__name__))
+
+    def _find_checksum_keyword(self, digestfile):
+        line = ""
+        while(line != "" and self.CHECKSUM_KEYWORD not in line):
+            line = digestfile.readline().decode()
+        return self.CHECKSUM_KEYWORD in line
+
+    def _verify(self):
+        BLOCKSIZE = 65536
+        hasher = self._verify_hasher()
+        with open(self._target_file, "rb") as targetfile:
+            buf = targetfile.read(BLOCKSIZE)
+            while len(buf) > 0:
+                hasher.update(buf)
+                buf = targetfile.read(BLOCKSIZE)
+
+        with open(self._checkum_file, "rb") as digestfile:
+            expected = ""
+            if self._find_checksum_keyword(digestfile):
+                expected = digestfile.readline().decode().split(" ")[0]
+                return expected == hasher.hexdigest()
+            else:
+                print("ERROR: could not find %s checksum in %s" % (self.CHECKSUM_KEYWORD, digestfile.name))
+                return False
 
     def _clean(self):
         for filepath in [self._target_file, self._checkum_file]:
@@ -101,15 +139,14 @@ class Downloader():
 
     def verify(self):
         result = False
-        print("INFO: Checksum verification of %s: " % self.filename, end="")
         try:
             result = self._verify()
+            print("INFO: Checksum verification of %s: " % self.filename, end="")
             if result:
                 print(":-)")
             else:
                 print(":-(")
         except Exception as e:
-            print(":-(")
             print("ERROR: %s" % e)
         return result
 
@@ -120,29 +157,18 @@ class Stage3Downloader(Downloader):
 
     @property
     def FILENAME(self):
-        return Template("stage3-$arch-$date.tar.bz2")
+        return Template("stage3-$subarch-$date.tar.bz2")
 
     @property
     def CHECKSUM_SUFFIX(self):
         return ".DIGESTS"
 
-    def _verify(self):
-        BLOCKSIZE = 65536
-        hasher = hashlib.sha512()
-        with open(self._target_file, "rb") as targetfile:
-            buf = targetfile.read(BLOCKSIZE)
-            while len(buf) > 0:
-                hasher.update(buf)
-                buf = targetfile.read(BLOCKSIZE)
+    @property
+    def CHECKSUM_KEYWORD(self):
+        return "SHA512 HASH"
 
-        with open(self._checkum_file, "rb") as digestfile:
-            expected = ""
-            lastchar = ""
-            digestfile.readline()
-            while (lastchar != " "):
-                expected += str(lastchar)
-                lastchar = digestfile.read(1).decode()
-            return expected == hasher.hexdigest()
+    def _verify_hasher(self):
+        return hashlib.sha512()
 
 
 class PortageDownloader(Downloader):
@@ -158,23 +184,20 @@ class PortageDownloader(Downloader):
     def CHECKSUM_SUFFIX(self):
         return ".md5sum"
 
-    def _verify(self):
-        hasher = hashlib.md5()
-        with open(self._target_file, "rb") as targetfile:
-            buf = targetfile.read()
-            hasher.update(buf)
+    @property
+    def CHECKSUM_KEYWORD(self):
+        return "MD5 HASH"
 
-        with open(self._checkum_file, "rb") as md5file:
-            expected = ""
-            lastchar = ""
-            while (lastchar != " "):
-                expected += lastchar
-                lastchar = md5file.read(1).decode()
-            return expected == hasher.hexdigest()
+    def _verify_hasher(self):
+        return hashlib.md5()
+
+    def _find_checksum_keyword(self, digestfile):
+        return True
+
 
 def download(args):
     if args.stage3:
-        stage3_downloader = Stage3Downloader(args.date, args.arch, args.directory, args.overwrite)
+        stage3_downloader = Stage3Downloader(args.date, args.arch, args.directory, args.overwrite, subarch=args.subarch)
         stage3_downloader.download()
 
     if args.portage:
@@ -183,7 +206,7 @@ def download(args):
 
 def verify(args):
     if args.stage3:
-        stage3_downloader = Stage3Downloader(args.date, args.arch, args.directory)
+        stage3_downloader = Stage3Downloader(args.date, args.arch, args.directory, subarch=args.subarch)
         stage3_downloader.verify()
 
     if args.portage:
@@ -192,10 +215,14 @@ def verify(args):
 
 def main():
     parser = argparse.ArgumentParser(description="Utility for retrieving Gentoo stage3+portage archives")
-    parser.add_argument("--arch", nargs="?", default="amd64", help="ARCH for stage3 archive. Defaults to 'amd64'")
-    parser.add_argument("--stage3", action="store_true", default=False, help="Process stage3 archive")
-    parser.add_argument("--portage", action="store_true", default=False, help="Process portage snapshot")
-    parser.add_argument("--directory", nargs="?", default="download/", help="Directory for file downloads. Defaults to 'download/'")
+    parser_stage3group = parser.add_argument_group()
+    parser.add_argument("--directory", nargs="?", default="download/", help="Directory for file downloads and verifications. Defaults to 'download/'")
+    parser_stage3group.add_argument("--stage3", action="store_true", default=False, help="Process stage3 archive")
+    parser_stage3group.add_argument("--arch", nargs="?", default="amd64", help="ARCH for stage3 archive. Defaults to 'amd64'")
+    parser_stage3group.add_argument("--subarch", nargs="?", help="SUBARCH for stage3 archive")
+    parser_portagegroup = parser.add_argument_group()
+    parser_portagegroup.add_argument("--portage", action="store_true", default=False, help="Process portage snapshot")
+
 
     # Subparser action
     subparsers = parser.add_subparsers(dest='action')

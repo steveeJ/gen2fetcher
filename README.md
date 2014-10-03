@@ -17,8 +17,8 @@ pip install -r https://raw.githubusercontent.com/steveeJ/gen2fetcher/master/requ
 ### Overview
 ```
 $ gen2fetcher --help
-usage: gen2fetcher [-h] [--arch [ARCH]] [--stage3] [--portage]
-                   [--directory [DIRECTORY]]
+usage: gen2fetcher [-h] [--directory [DIRECTORY]] [--stage3] [--arch [ARCH]]
+                   [--subarch [SUBARCH]] [--portage]
                    {download,verify} ...
 
 Utility for retrieving Gentoo stage3+portage archives
@@ -28,11 +28,15 @@ positional arguments:
 
 optional arguments:
   -h, --help            show this help message and exit
-  --arch [ARCH]         ARCH for stage3 archive. Defaults to 'amd64'
-  --stage3              Process stage3 archive
-  --portage             Process portage snapshot
   --directory [DIRECTORY]
-                        Directory for file downloads. Defaults to 'download/'
+                        Directory for file downloads and verifications.
+                        Defaults to 'download/'
+
+  --stage3              Process stage3 archive
+  --arch [ARCH]         ARCH for stage3 archive. Defaults to 'amd64'
+  --subarch [SUBARCH]   SUBARCH for stage3 archive
+
+  --portage             Process portage snapshot
 ```
 
 ### download command
