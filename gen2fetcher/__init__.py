@@ -6,6 +6,7 @@ from string import Template
 import hashlib
 import argparse
 
+__version__ = "0.1.1"
 
 class Downloader():
     """
@@ -215,6 +216,8 @@ def verify(args):
 
 def main():
     parser = argparse.ArgumentParser(description="Utility for retrieving Gentoo stage3+portage archives")
+    parser.add_argument('--version', action='version', version=__version__)
+
     parser_stage3group = parser.add_argument_group()
     parser.add_argument("--directory", nargs="?", default="download/", help="Directory for file downloads and verifications. Defaults to 'download/'")
     parser_stage3group.add_argument("--stage3", action="store_true", default=False, help="Process stage3 archive")
@@ -222,7 +225,6 @@ def main():
     parser_stage3group.add_argument("--subarch", nargs="?", help="SUBARCH for stage3 archive")
     parser_portagegroup = parser.add_argument_group()
     parser_portagegroup.add_argument("--portage", action="store_true", default=False, help="Process portage snapshot")
-
 
     # Subparser action
     subparsers = parser.add_subparsers(dest='action')
