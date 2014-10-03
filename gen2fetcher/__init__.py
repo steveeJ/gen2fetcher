@@ -6,7 +6,7 @@ from string import Template
 import hashlib
 import argparse
 
-__version__ = "0.1.1"
+__version__ = "0.1.2"
 
 class Downloader():
     """
@@ -68,7 +68,7 @@ class Downloader():
         raise NotImplementedError("Class %s doesn't implement this method" % (self.__class__.__name__))
 
     def _find_checksum_keyword(self, digestfile):
-        line = ""
+        line = "-"
         while(line != "" and self.CHECKSUM_KEYWORD not in line):
             line = digestfile.readline().decode()
         return self.CHECKSUM_KEYWORD in line
@@ -83,7 +83,6 @@ class Downloader():
                 buf = targetfile.read(BLOCKSIZE)
 
         with open(self._checkum_file, "rb") as digestfile:
-            expected = ""
             if self._find_checksum_keyword(digestfile):
                 expected = digestfile.readline().decode().split(" ")[0]
                 return expected == hasher.hexdigest()
