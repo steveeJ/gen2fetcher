@@ -7,7 +7,7 @@ import hashlib
 import argparse
 import logging as log
 
-__version__ = "0.1.3"
+__version__ = "0.1.4"
 
 def get_loglevel(verbosity, minimum=3):
     VERBOSITY_LOGLEVEL = { 0: log.CRITICAL,
@@ -20,6 +20,7 @@ def get_loglevel(verbosity, minimum=3):
         return list(VERBOSITY_LOGLEVEL.keys())[-1]
     else:
         return VERBOSITY_LOGLEVEL[verbosity]
+
 
 class Downloader():
     """
@@ -128,7 +129,7 @@ class Downloader():
         try:
             for filename in [self.filename, self.filename + self.CHECKSUM_SUFFIX]:
                 log.debug("Downloading %s" % filename)
-                wget.download(self.base_url + filename, out=self.directory, bar=wget.bar_thermometer)
+                wget.download(self.base_url + filename, out=self.directory, bar=None)
             if self.verify():
                 log.debug(("Successfully downloaded: %s" % filename))
                 return self._target_file
