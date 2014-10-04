@@ -5,14 +5,27 @@ import datetime, wget, os
 from string import Template
 import hashlib
 import argparse
+import logging as log
 
-__version__ = "0.1.2"
+__version__ = "0.1.3"
+
+def get_loglevel(verbosity, minimum=3):
+    VERBOSITY_LOGLEVEL = { 0: log.CRITICAL,
+                           1: log.ERROR,
+                           2: log.WARNING,
+                           3: log.INFO,
+                           4: log.DEBUG }
+    verbosity += minimum
+    if verbosity > list(VERBOSITY_LOGLEVEL.keys())[-1]:
+        return list(VERBOSITY_LOGLEVEL.keys())[-1]
+    else:
+        return VERBOSITY_LOGLEVEL[verbosity]
 
 class Downloader():
     """
     Base Class which serves as a partial implementation to common methods.
     """
-    def __init__(self, date, arch, directory, overwrite=False, subarch=None):
+    def __init__(self, date, arch, directory, overwrite=False, subarch=None, history=7):
         """
 
         :param date: Date to be specified in YYYYMMDD format
@@ -27,22 +40,23 @@ class Downloader():
         self.subarch = subarch
         self.directory = directory
         self.overwrite = overwrite
+        self.history = history
 
     @property
     def BASE_URL(self):
-        raise NotImplementedError("Class %s doesn't implement this method" % (self.__class__.__name__))
+        raise NotImplementedError("Class %s doesn't implement this method" % self.__class__.__name__)
 
     @property
     def FILENAME(self):
-        raise NotImplementedError("Class %s doesn't implement this method" % (self.__class__.__name__))
+        raise NotImplementedError("Class %s doesn't implement this method" % self.__class__.__name__)
 
     @property
     def CONTENTS_SUFFIX(self):
-        raise NotImplementedError("Class %s doesn't implement this method" % (self.__class__.__name__))
+        raise NotImplementedError("Class %s doesn't implement this method" % self.__class__.__name__)
 
     @property
     def CHECKSUM_SUFFIX(self):
-        raise NotImplementedError("Class %s doesn't implement this method" % (self.__class__.__name__))
+        raise NotImplementedError("Class %s doesn't implement this method" % self.__class__.__name__)
 
     @property
     def base_url(self):
@@ -62,14 +76,14 @@ class Downloader():
 
     @property
     def CHECKSUM_KEYWORD(self):
-        raise NotImplementedError("Class %s doesn't implement this method" % (self.__class__.__name__))
+        raise NotImplementedError("Class %s doesn't implement this method" % self.__class__.__name__)
 
     def _verify_hasher(self):
-        raise NotImplementedError("Class %s doesn't implement this method" % (self.__class__.__name__))
+        raise NotImplementedError("Class %s doesn't implement this method" % self.__class__.__name__)
 
     def _find_checksum_keyword(self, digestfile):
         line = "-"
-        while(line != "" and self.CHECKSUM_KEYWORD not in line):
+        while line != "" and self.CHECKSUM_KEYWORD not in line:
             line = digestfile.readline().decode()
         return self.CHECKSUM_KEYWORD in line
 
@@ -87,67 +101,67 @@ class Downloader():
                 expected = digestfile.readline().decode().split(" ")[0]
                 return expected == hasher.hexdigest()
             else:
-                print("ERROR: could not find %s checksum in %s" % (self.CHECKSUM_KEYWORD, digestfile.name))
+                log.critical("Could not find %s checksum in %s" % (self.CHECKSUM_KEYWORD, digestfile.name))
                 return False
 
     def _clean(self):
         for filepath in [self._target_file, self._checkum_file]:
             if os.path.exists(filepath):
-                print("INFO: Renaming %s" % filepath)
+                log.debug("Renaming %s" % filepath)
                 os.rename(filepath, "%s.old" % filepath)
 
     def _download(self):
         if os.path.exists(self._target_file):
             if self.overwrite:
-                print("DEBUG: Chose to overwrite old files.")
+                log.info("Chose to overwrite old files.")
                 self._clean()
             elif not self.verify():
-                print("WARNING: Previous download seems corrupted.")
+                log.error("Previous download seems corrupted.")
                 self._clean()
             else:
-                print("INFO: Using previously downloaded %s" % self.filename)
+                log.info("Using previously downloaded %s" % self.filename)
                 return self.filename
         elif not os.path.exists(self.directory):
-            print("INFO: Creating %s" % self.directory)
+            log.debug("Creating %s" % self.directory)
             os.mkdir(self.directory)
 
         try:
             for filename in [self.filename, self.filename + self.CHECKSUM_SUFFIX]:
-                print("INFO: Downloading %s" % filename)
+                log.debug("Downloading %s" % filename)
                 wget.download(self.base_url + filename, out=self.directory, bar=wget.bar_thermometer)
-                print("")
             if self.verify():
+                log.debug(("Successfully downloaded: %s" % filename))
                 return self._target_file
             else:
                 return None
         except Exception as e:
-            print("ERROR: Failed to download %s\n%s" % (filename, e))
+            log.debug("Failed to download %s: %s" % (filename, e))
 
     def download(self):
         if self.date is None:
-            print("DEBUG: Assuming today for archive date")
+            log.debug("Assuming today for archive date")
             self.date = datetime.datetime.today().strftime("%Y%m%d")
 
         day = datetime.datetime.strptime(self.date, "%Y%m%d")
-        filename = None
-        for i in list(range(7)):
+
+        for i in list(range(1+self.history)):
             self.date = (day-datetime.timedelta(days=i)).strftime("%Y%m%d")
             filename = self._download()
             if filename is not None:
-                break
-        return filename
+                return filename
+
+        log.warning("Could not find a valid file between %s and %s" % (self.date, day.strftime("%Y%m%d")))
+        return None
+
 
     def verify(self):
         result = False
         try:
             result = self._verify()
-            print("INFO: Checksum verification of %s: " % self.filename, end="")
-            if result:
-                print(":-)")
-            else:
-                print(":-(")
+            result_string = { False: ":-(", True: ":-)" }
+            log.debug("Checksum verification of %s: %s" % (self.filename, result_string[result]))
         except Exception as e:
-            print("ERROR: %s" % e)
+            log.critical("%s" % e)
         return result
 
 class Stage3Downloader(Downloader):
@@ -197,11 +211,11 @@ class PortageDownloader(Downloader):
 
 def download(args):
     if args.stage3:
-        stage3_downloader = Stage3Downloader(args.date, args.arch, args.directory, args.overwrite, subarch=args.subarch)
+        stage3_downloader = Stage3Downloader(args.date, args.arch, args.directory, args.overwrite, subarch=args.subarch, history=args.history)
         stage3_downloader.download()
 
     if args.portage:
-        portage_downloader = PortageDownloader(args.date, args.arch, args.directory, args.overwrite)
+        portage_downloader = PortageDownloader(args.date, args.arch, args.directory, args.overwrite, history=args.history)
         portage_downloader.download()
 
 def verify(args):
@@ -216,6 +230,9 @@ def verify(args):
 def main():
     parser = argparse.ArgumentParser(description="Utility for retrieving Gentoo stage3+portage archives")
     parser.add_argument('--version', action='version', version=__version__)
+    parser.add_argument('-v', '--verbosity', action="count", default=0,
+                        help="increase output verbosity (e.g., -vv is more than -v)")
+    parser.add_argument('--history', type=int, default=60, help="Days to attempt to go back from the specified or assumed date")
 
     parser_stage3group = parser.add_argument_group()
     parser.add_argument("--directory", nargs="?", default="download/", help="Directory for file downloads and verifications. Defaults to 'download/'")
@@ -239,4 +256,5 @@ def main():
     parser_verify.set_defaults(func=verify)
 
     args = parser.parse_args()
+    log.basicConfig(format="%(levelname)s: %(message)s", level=get_loglevel(args.verbosity))
     args.func(args)

@@ -29,7 +29,6 @@ setup(
         ]
     },
     install_requires=[
-        'vcversioner',
         'wget>2.2',
     ],
     classifiers=[
